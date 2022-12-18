@@ -1,23 +1,84 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute, Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { IAlunoDto } from './../interfaces/IAlunoDto';
+import { Component, OnInit } from '@angular/core';
 
-import { AlunosEditarComponent } from './alunos-editar.component';
+@Component({
+  selector: 'app-alunos-editar',
+  templateUrl: './alunos-editar.component.html',
+  styleUrls: ['./alunos-editar.component.css']
+})
+export class AlunosEditarComponent implements OnInit {
+  aluno!: IAlunoDto;
+  idRecebido!: number;
 
-describe('AlunosEditarComponent', () => {
-  let component: AlunosEditarComponent;
-  let fixture: ComponentFixture<AlunosEditarComponent>;
+  constructor(private http: HttpClient, private route: ActivatedRoute, private router: Router) {
+    this.route.paramMap.subscribe(params => {
+      this.idRecebido = Number(params.get('id'));
+    });
+  }
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      declarations: [ AlunosEditarComponent ]
-    })
-    .compileComponents();
+  ngOnInit(): void {
+    this.aluno = {
+      id: this.idRecebido ?? 0,
+      nome: '',
+      documento: '',
+      aniversario: '',
+      matricula: '',
+      ultimoNome: ''
+    }
 
-    fixture = TestBed.createComponent(AlunosEditarComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+    // BUSCAR NA API OS DADOS DO ALUNO QUE RECEBEMOS O ID NA URL
+    if (this.idRecebido) {
+      this.http
+        .get(`https://localhost:7088/ListarPorId/${this.idRecebido}`)
+        .subscribe((data) => {
+          this.aluno = data as IAlunoDto;
+        });
+    }
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-});
+  }
+
+  salvar() {
+
+    if (this.validarInformacoes()) {
+      console.log(`Objeto para salvar: ${JSON.stringify(this.aluno)}`);
+
+      if (this.aluno.id == 0) {
+
+        // if(!this.aluno.aniversario || this.aluno.aniversario==''){
+        //   console.log('erro na data');
+        // this.aluno.aniversario = '0001-01-01';
+        // }
+
+        this.http.post('https://localhost:7088/cadastraraluno', this.aluno)
+          .subscribe((data) => {
+            this.router.navigate(['listaalunos']);
+          });
+
+      } else {
+        this.http.patch('https://localhost:7088/atualizar', this.aluno)
+          .subscribe((data) => {
+            this.router.navigate(['listaalunos']);
+          });
+      }
+
+    } else {
+      console.log('Erro na validação');
+      // TRATAMENTO DE ERRO
+      // ALERTA
+      // BORDA VERMELHA
+    }
+  }
+
+  validarInformacoes(): boolean {
+    if (this.aluno.nome == '') {
+      return false;
+    }
+
+    // VALIDAR COM REGEX
+
+    return true;
+  }
+
+}
